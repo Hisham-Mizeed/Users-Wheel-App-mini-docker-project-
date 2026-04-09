@@ -57,7 +57,7 @@ Docker_project/
 ### 1️⃣ Clone the repository
 
 ```bash
-git clone https://github.com/Hisham-Mizeed/Users-Wheel-App-mini-docker-project-.git
+git clone https://github.com/Hisham-Mizeed/Users-Wheel-App-Mini-Docker-Project.git
 cd Docker_project
 ```
 
