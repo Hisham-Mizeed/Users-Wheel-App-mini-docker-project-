@@ -1,28 +1,38 @@
 import { useEffect, useState } from "react";
+import "./App.css";
 
 function App() {
   const [users, setUsers] = useState([]);
   const [name, setName] = useState("");
   const [rotation, setRotation] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [spinning, setSpinning] = useState(false);
+  const [winnerIndex, setWinnerIndex] = useState(null);
 
-  const API = "http://localhost:3000";
+  const colors = [
+    "#FF6384",
+    "#36A2EB",
+    "#FFCE56",
+    "#4CAF50",
+    "#9C27B0",
+    "#FF9800",
+    "#00BCD4",
+    "#E91E63"
+  ];
 
-  const fetchUsers = async () => {
-    const res = await fetch(`${API}/users`);
-    const data = await res.json();
-    setUsers(data);
+  const fetchUsers = () => {
+    fetch("http://localhost:3000/users")
+      .then(res => res.json())
+      .then(data => setUsers(data));
   };
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
+  // Add
   const addUser = async () => {
-    if (!name.trim()) return;
+    if (!name) return;
 
-    await fetch(`${API}/users`, {
+    await fetch("http://localhost:3000/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name })
@@ -32,151 +42,212 @@ function App() {
     fetchUsers();
   };
 
-  // 🎯 FIXED SPIN LOGIC
-  const spinWheel = () => {
-    if (users.length === 0 || spinning) return;
+  // Delete
+  const deleteUser = async (id) => {
+    await fetch(`http://localhost:3000/users/${id}`, {
+      method: "DELETE"
+    });
 
-    setSpinning(true);
-
-    const index = Math.floor(Math.random() * users.length);
-
-    const anglePerItem = 360 / users.length;
-
-    // 🎯 ALWAYS same direction + consistent speed
-    const extraSpins = 6 * 360;
-
-    const finalAngle =
-      extraSpins + (360 - index * anglePerItem - anglePerItem / 2);
-
-    setRotation((prev) => prev + finalAngle);
-
-    setTimeout(() => {
-      setSelected(users[index].name);
-      setSpinning(false);
-    }, 3500);
+    fetchUsers();
   };
 
+  // 🎡 Spin (FIXED LOGIC)
+  const spinWheel = () => {
+    if (users.length === 0) return;
+
+    const angle = 360 / users.length;
+
+    // 🎯 اختار الفائز الأول
+    const randomIndex = Math.floor(Math.random() * users.length);
+
+    // خلي السهم يقف في نص الجزء
+    const targetAngle = randomIndex * angle + angle / 2;
+
+    // لفات زيادة + التوجيه
+    const spins = 6;
+    const finalRotation =
+      rotation +
+      spins * 360 +
+      (360 - targetAngle); // دي أهم سطر 🔥
+
+    setRotation(finalRotation);
+
+    setTimeout(() => {
+      setWinnerIndex(randomIndex);
+
+      const winnerName = users[randomIndex]?.name;
+
+      const keep = window.confirm(
+        `🎉 Winner: ${winnerName}\n\nOK = Keep\nCancel = Delete`
+      );
+
+      if (!keep) {
+        deleteUser(users[randomIndex].id);
+        setWinnerIndex(null);
+      }
+    }, 4500);
+  };
+
+  const angle = users.length ? 360 / users.length : 0;
+
   return (
-    <div style={{ textAlign: "center", paddingTop: "20px" }}>
+    <div style={{ textAlign: "center", marginTop: "20px" }}>
+      <h1>🎡 Users Wheel</h1>
 
-      <h1>🎡 Wheel</h1>
+      {/* Add */}
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Enter name"
+      />
+      <button onClick={addUser}>Add</button>
 
-      {/* ADD USER */}
-      <div style={{ marginBottom: "20px" }}>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Add user"
-          style={{ padding: "8px" }}
-        />
-        <button onClick={addUser} style={{ marginLeft: "10px" }}>
-          Add
-        </button>
+      {/* Users */}
+      <div style={{ marginTop: "20px" }}>
+        {users.map(user => (
+          <div key={user.id}>
+            {user.name}
+            <button
+              onClick={() => deleteUser(user.id)}
+              style={{
+                marginLeft: "10px",
+                background: "red",
+                color: "white"
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        ))}
       </div>
 
-      {/* PUSH WHEEL DOWN (fix layout) */}
-      <div style={{ marginTop: "40px" }} />
+      {/* Pointer */}
+      <div
+        style={{
+          width: 0,
+          height: 0,
+          borderLeft: "15px solid transparent",
+          borderRight: "15px solid transparent",
+          borderTop: "30px solid black",
+          margin: "20px auto"
+        }}
+      />
 
-      {/* POINTER */}
-      <div style={{ fontSize: "40px" }}>⬇️</div>
-
-      {/* WHEEL */}
+      {/* Wheel */}
       <div
         style={{
           margin: "0 auto",
-          width: "360px",
-          height: "360px",
+          width: "320px",
+          height: "320px",
           borderRadius: "50%",
-          position: "relative",
-          transform: `rotate(${rotation}deg)`,
-          transition: "transform 3.5s cubic-bezier(0.12, 0.8, 0.2, 1)",
+          border: "6px solid black",
+          overflow: "hidden",
+          position: "relative"
         }}
       >
-        {/* SVG wheel (perfect 360 distribution) */}
-        <svg width="360" height="360" viewBox="0 0 360 360">
-          {users.map((u, i) => {
-            const angle = (360 / users.length) * i;
-            const nextAngle = (360 / users.length) * (i + 1);
-
-            const x1 = 180 + 180 * Math.cos((Math.PI * angle) / 180);
-            const y1 = 180 + 180 * Math.sin((Math.PI * angle) / 180);
-
-            const x2 = 180 + 180 * Math.cos((Math.PI * nextAngle) / 180);
-            const y2 = 180 + 180 * Math.sin((Math.PI * nextAngle) / 180);
-
-            const largeArc = 0;
-
-            const path = `
-              M 180 180
-              L ${x1} ${y1}
-              A 180 180 0 ${largeArc} 1 ${x2} ${y2}
-              Z
-            `;
-
-            return (
-              <path
-                key={u.id}
-                d={path}
-                fill={i % 2 === 0 ? "#4caf50" : "#2196f3"}
-                stroke="#fff"
-              />
-            );
-          })}
-        </svg>
-
-        {/* labels */}
         <div
           style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            pointerEvents: "none"
+            width: "100%",
+            height: "100%",
+            transform: `rotate(${rotation}deg)`,
+            transition: "transform 4.5s ease-out"
           }}
         >
-          {users.map((u, i) => {
-            const angle = (360 / users.length) * i;
+          {/* 🟢 حالة 1 */}
+          {users.length === 1 && (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                background: colors[0],
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                fontWeight: "bold",
+                fontSize: "20px"
+              }}
+            >
+              {users[0].name}
+            </div>
+          )}
 
-            return (
+          {/* 🟢 حالة 2 */}
+          {users.length === 2 &&
+            users.map((user, i) => (
               <div
-                key={u.id}
+                key={user.id}
                 style={{
                   position: "absolute",
-                  transform: `rotate(${angle}deg) translate(120px)`,
-                  transformOrigin: "center",
-                  fontSize: "12px",
-                  color: "white",
-                  fontWeight: "bold",
-                  width: "80px",
-                  textAlign: "center"
+                  width: "100%",
+                  height: "50%",
+                  top: i === 0 ? 0 : "50%",
+                  background: colors[i],
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  fontWeight: "bold"
                 }}
               >
-                {u.name}
+                {user.name}
               </div>
-            );
-          })}
+            ))}
+
+          {/* 🟢 3+ */}
+          {users.length > 2 &&
+            users.map((user, index) => {
+              const rotate = index * angle;
+              const isWinner = index === winnerIndex;
+
+              return (
+                <div
+                  key={user.id}
+                  style={{
+                    position: "absolute",
+                    width: "50%",
+                    height: "50%",
+                    background: colors[index % colors.length],
+                    transform: `rotate(${rotate}deg) skewY(${90 - angle}deg)`,
+                    transformOrigin: "100% 100%"
+                  }}
+                >
+                  {/* Highlight overlay */}
+                  {isWinner && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(255,215,0,0.4)"
+                      }}
+                    />
+                  )}
+
+                  <span
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: `rotate(${angle / 2}deg)`,
+                      fontSize: "12px",
+                      fontWeight: "bold"
+                    }}
+                  >
+                    {user.name}
+                  </span>
+                </div>
+              );
+            })}
         </div>
       </div>
 
-      {/* SPIN BUTTON (moved down properly) */}
-      <div style={{ marginTop: "50px" }}>
-        <button
-          onClick={spinWheel}
-          disabled={spinning}
-          style={{
-            padding: "12px 25px",
-            fontSize: "16px",
-            cursor: "pointer"
-          }}
-        >
-          {spinning ? "Spinning..." : "Spin 🎯"}
-        </button>
-      </div>
+      {/* Spin */}
+      <button onClick={spinWheel} style={{ marginTop: "20px" }}>
+        Spin 🎡
+      </button>
 
-      {/* RESULT */}
-      {selected && (
-        <h2 style={{ marginTop: "20px" }}>
-          🎉 {selected}
+      {/* Winner */}
+      {winnerIndex !== null && (
+        <h2 style={{ marginTop: "20px", color: "green" }}>
+          🎉 Winner: {users[winnerIndex]?.name}
         </h2>
       )}
     </div>
