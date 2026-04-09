@@ -1,0 +1,61 @@
+services: 
+   backend:
+    build: ./backend
+    container_name: be_cont
+    ports: 
+     - "3000:3000"
+    networks:
+      - fe_net
+      - be_net
+    environment:
+      DB_HOST: database
+      DB_USER: user
+      DB_PASS: pass
+      DB_NAME: db
+      REDIS_HOST: redis
+    depends_on:
+      - database 
+      - redis
+   frontend: 
+     build: ./frontend
+     container_name: fe_cont
+     ports:
+      - "3001:80"
+     networks:
+      - fe_net   
+     depends_on:
+      - backend
+
+   database:
+      image: postgres:15-alpine
+      container_name: db_cont
+      environment:
+        POSTGRES_USER: user
+        POSTGRES_PASSWORD: pass
+        POSTGRES_DB: db
+      ports:
+        - "5432:5432"
+      networks:
+          - be_net
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+        - ./database:/docker-entrypoint-initdb.d
+
+
+   redis:
+    image: redis:alpine
+    container_name: redis_cont
+    ports:
+    - "6379:6379"
+    networks:
+      - be_net
+
+
+volumes:
+  postgres_data:
+
+networks:
+  fe_net:
+  be_net:
+
+

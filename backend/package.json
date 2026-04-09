@@ -1,0 +1,15 @@
+{
+  "name": "docker-devops-project",
+  "version": "1.0.0",
+  "description": "Simple Node.js API for Docker project",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "pg": "^8.11.0",
+    "redis": "^4.6.0"
+  }
+}
